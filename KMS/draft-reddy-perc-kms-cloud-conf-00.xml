@@ -1,0 +1,575 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+<rfc category="std" docName="draft-reddy-perc-kms-cloud-conf-00"
+     ipr="trust200902">
+  <front>
+    <title abbrev="KMS for cloud conferencing">KMS distributing keys for
+    Privacy Ensured Cloud Conferencing</title>
+
+    <author fullname="Tirumaleswar Reddy" initials="T." surname="Reddy">
+      <organization abbrev="Cisco">Cisco Systems, Inc.</organization>
+
+      <address>
+        <postal>
+          <street>Cessna Business Park</street>
+
+          <street>Sarjapur-Marathahalli Outer Ring Road</street>
+
+          <city>Bangalore</city>
+
+          <region>Karnataka</region>
+
+          <code>560103</code>
+
+          <country>India</country>
+        </postal>
+
+        <email>tireddy@cisco.com</email>
+      </address>
+    </author>
+
+    <author fullname="Ram Mohan Ravindranath" initials="R"
+            surname="Ravindranath">
+      <organization abbrev="Cisco">Cisco Systems, Inc.</organization>
+
+      <address>
+        <postal>
+          <street>Cessna Business Park</street>
+
+          <street>Sarjapur-Marathahalli Outer Ring Road</street>
+
+          <city>Bangalore</city>
+
+          <region>Karnataka</region>
+
+          <code>560103</code>
+
+          <country>India</country>
+        </postal>
+
+        <email>rmohanr@cisco.com</email>
+      </address>
+    </author>
+
+    <date />
+
+    <workgroup>PERC</workgroup>
+
+    <abstract>
+      <t>This document describes a key management service that will distribute
+      keys to conference participants ensuring media confidentiality and
+      integrity are maintained end-to-end within the context of a switched
+      conferencing environment where the switching conference server is not
+      entrusted with the media encryption keys.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="introduction" title="Introduction">
+      <t>Switched conferencing is an increasingly popular model for multimedia
+      conferences with multiple participants using a combination of audio,
+      video, text, and other media types. With this model, real-time media
+      flows from conference participants are not mixed, transcoded,
+      transrated, recomposed, or otherwise manipulated on the conference
+      server, as might be the case with a traditional multipoint control unit
+      (MCU). Instead, media flows transmitted by conference participants are
+      simply forwarded by the switching conference server to each of the other
+      participants, selectively forwarding flows based on voice activity
+      detection or other criteria. In some instances, the switching conference
+      server may make limited modifications to RTP <xref
+      target="RFC3550"></xref> headers, for example, but the actual media
+      content (e.g., voice or video data) is unaltered.</t>
+
+      <t>An advantage of switched conferencing is that conference servers can
+      be deployed on general-purpose computing hardware, as there is no need
+      for the specialized hardware required to manipulate media flows that one
+      finds on a traditional hardware MCU. This, in turn, means that it is
+      possible to deploy switching conference servers in virtualized
+      environments, including private and public clouds. However, deploying
+      conference resource in a public cloud environment may introduce a higher
+      security risk. Recognising the need to improve the way in which media
+      confidentiality is ensured, requirements for private media are specified
+      in <xref target="I-D.jones-avtcore-private-media-reqts"></xref>. The
+      solution framework wherein privacy is ensured for media is discussed in
+      <xref target="I-D.jones-avtcore-private-media-framework"></xref>. Thus,
+      there is a need to utilize an end-to-end encryption and authentication
+      key (or pair of keys) and a hop-by-hop encryption and authentication key
+      (or pair of keys). The purpose for the hop-by-hop encryption key is to
+      optionally encrypt RTP header extensions. This dual-key model does
+      necessitate a change in the way that keys are managed. This document
+      defines how a Key Management Service could be used for distributing
+      cryptographic keys to the conference participants for encrypting and
+      authenticating media content.</t>
+
+      <t>This memo assumes the reader is familiar with Encrypted Key Transport
+      (EKT) <xref target="I-D.ietf-avtcore-srtp-ekt"></xref>. This document
+      also updates the Full EKT field.</t>
+    </section>
+
+    <section anchor="notation" title="Notational Conventions">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+      "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+      document are to be interpreted as described in <xref
+      target="RFC2119"></xref>.</t>
+
+      <section title="Definitions and Notation">
+        <t>KMS: Key Management Service.</t>
+
+        <t>Ticket: A Kerberos like object used to identify and deliver keys
+        over an untrusted network.</t>
+      </section>
+    </section>
+
+    <section anchor="alg_over" title="Design considerations">
+      <t>A KMS can be used to propagate group keying material to authorized
+      conference participants as and when needed and avoids the use of
+      pair-wise keys. A KMS based on symmetric keys has particular advantages,
+      as symmetric key algorithms are generally much less computationally
+      intensive than asymmetric key algorithms and the size of cipher-text
+      generated using symmetric key algorithm is smaller compared to the
+      cipher-text generated using asymmetric encryption algorithm. Systems
+      based on a KMS require a signaling mechanism that allows peers to
+      retrieve other peers keying material. The keying material should only be
+      accessible to authorized listeners in the conference call so that they
+      can authenticate and decrypt the media content.</t>
+
+      <t>A convenient way to implement such a signaling scheme is to use a
+      ticket concept, similar to that in Kerberos <xref
+      target="RFC4120"></xref> to identify and deliver keys. The ticket can be
+      forwarded in the Full EKT Field defined in <xref
+      target="I-D.ietf-avtcore-srtp-ekt"></xref>. The speaker in the
+      conference call requests a ticket and keying material from the KMS,
+      conveys the identities of conference participants authorized to receive
+      the keying material associated with the ticket to the KMS and sends the
+      ticket in the Full EKT Field. The participants in the conference call
+      gets the ticket from Full EKT Field, requests KMS to provide the keying
+      material associated with the ticket. If the conference participant is
+      authorized previously by the speaker then KMS returns the corresponding
+      keying material.</t>
+
+      <t>Other reasons for using EKT are discussed below:</t>
+
+      <t><list style="symbols">
+          <t>EKT based ROC synchronization is efficient over KMS based ROC
+          synchronization in mobile and wireless environments, where members
+          may go in and out of coverage and may miss a sequence number
+          overrun. EKT solves the problem in which the burst loss of the N
+          initial SRTP packets can confuse an SRTP receiver, when the initial
+          RTP sequence number is greater than or equal to 2^16 - N.</t>
+
+          <t>EKT SPI allows the receiver to identify the cryptographic keys
+          and parameters used by the source when new ticket is issued and
+          packets with Short EKT Field are received before packets with Full
+          EKT Field.</t>
+        </list></t>
+
+      <t>KMS is already used in GDOI <xref target="RFC6407"></xref>,
+      MIKEY-TICKET <xref target="RFC6043"></xref>, end-to-end encryption key
+      management service <xref
+      target="I-D.abiggs-saag-key-management-service"></xref> etc.</t>
+    </section>
+
+    <section anchor="overview" title="Overview">
+      <t>The participants do not share any credentials; instead, they trust a
+      third party, the KMS, with which they have or can establish shared
+      credentials. These pre-established trust relations are used to establish
+      a security association between participants in the conference.</t>
+
+      <t>The speaker in the conference call requests a ticket and keying
+      material from the KMS. The request message also includes identities of
+      the conference participants authorized to receive the keying material
+      associated with the ticket. Each conference participant is referenced
+      using an identifier that is unique within an conferencing call. If the
+      request is authorized then KMS generates the encryption key (referred to
+      as EKT Key (key encrypting key) defined in <xref
+      target="I-D.ietf-avtcore-srtp-ekt"></xref>), cipher suite and ticket,
+      and returns them in a response message. The ticket could be
+      self-contained (key encrypted in the ticket) or just a handle to some
+      internal datastructure within the KMS. The EKT cipher will either be
+      negotiated between the conference participant and KMS or determined by
+      the KMS implicitly and conveyed to the conference participant.</t>
+
+      <t>The speaker in the conference call includes the ticket in the Full
+      EKT Field. The media content is protected and encrypted using the SRTP
+      Master key signalled in the Full EKT Field. The SRTP Master key is
+      encrypted using the EKT key. Conference participants receiving the media
+      and Full EKT Field forward the ticket to the KMS and request the KMS to
+      provide the keying material associated with the ticket and identity of
+      the ticket issuer. If the conference participant is authorized
+      previously and the ticket is valid then the KMS retrieves the key,
+      cipher suite associated with the ticket and identity of the ticket
+      issuer, and conveys them to the conference participant. The other
+      alternative technique is that KMS implicitly pushes the keying material
+      to authorized conference participants. If the identity of the ticket
+      issuer matches that of a conference participant then validation is
+      successful that media content is generated by a trusted source and the
+      EKT Ciphertext in Full EKT Field will be decrypted using the EKT Key and
+      EKT Cipher learned from the KMS. The SRTP Master key in the Full EKT
+      Field will be used to decrypt the media content.</t>
+
+      <t>When participants leaves or join a conference, the Switching
+      Conference Server is notified. In reaction to that notification, the
+      Switching Conference Server informs the conference participants of the
+      leave or join. If participants receiving media join or leave the
+      conference call then the speaker in the conference will change the EKT
+      Key (but not too often exceeding recommendation in <xref
+      target="security"></xref>) by requesting a new ticket and new keying
+      material from the KMS. The request message from the speaker to KMS
+      includes identities of the conference participants authorized to receive
+      the keying material associated with the new ticket. The new ticket will
+      be conveyed in the Full EKT Field encrypted using the new EKT Key and
+      media content will be integrity protected and encrypted using the new
+      SRTP Master key conveyed in the Full EKT Field. This mechanism ensures
+      that even if the attacker gets access to the media packet prior to
+      joining the conference call or after leaving the call, it cannot decrypt
+      the EKT Cipher text and will not know the SRTP master key to decrypt the
+      encrypted portion of the RTP packet. For example several job candidates
+      are dialing into a conference call, being interviewed, and leave, and
+      the proposed mechanism ensures that any job candidate does not hear
+      other job candidate's interviews, or hear the discussion/introduction
+      prior to they (themselves) join the bridge or the discussions after they
+      leave.</t>
+
+      <t><xref target="figure1"></xref> shows an example of conference
+      participant Alice requesting a new ticket and keying material from the
+      KMS. The request message includes the identifiers of conference
+      participants Chris and Bob authorized to receive the keying material
+      associated with the ticket. KMS returns the ticket and keying material
+      in the response message. Alice includes the ticket in the Full EKT
+      Field. Chris forwards the ticket to the KMS and requests the KMS for
+      keying material associated with the ticket (In Ticket resolve request
+      message). KMS validates the ticket, and checks if Chris was previously
+      authorized to receive keying material for this conference. As Chris is
+      authorized, keying material for the conference is send in the response
+      message. Similarly, Bob retrieves the keying material associated with
+      the ticket from KMS.</t>
+
+      <t><figure anchor="figure1" title="Interaction with KMS">
+          <artwork><![CDATA[
+
++-----------+            +-------+     +------------+     
+| Alice     |            |  KMS  |     | Conference |     +-------+    +------+
+| (Speaker) |            |       |     | server     |     | Chris |    | Bob  |
++----+------+            +----+--+     +------------+     +-------+    +--+---+
+     |                      |             |                |              |    
+     |                      |             |                |              |    
+     | Ticket Request       |             |                |              |    
+     +--------------------->|             |                |              |    
+     |                      |             |                |              |    
+     | Ticket Response      |             |                |              |    
+     |<---------------------+             |                |              |    
+     |                      |             |                |              |    
+     | Ticket sent in       |             |                |              |  
+     |   Full EKT Field     |             |                |              |
+     +----------------------------------->|Ticket in Full EKT Field       |    
+     |                      |             +--------------->|              |  
+     |                      |             | Ticket in Full EKT Field      |
+     |                      |             +------------------------------>|    
+     |                      |             | Ticket resolve |              |    
+     |                      |             |<---------------+              |    
+     |                      |             | Resolve response              |    
+     |                      |             +--------------->|              |    
+     |                      |             |                |              |    
+     |                      |             | Ticket resolve |              |    
+     |                      |             |<------------------------------+    
+     |                      |             | Resolve response              |    
+     |                      |             +------------------------------>|    
+     |                      |             |                |              |  
+     +                      +             +                +              +    
+
+       ]]></artwork>
+        </figure></t>
+    </section>
+
+    <section title="Full EKT Field format">
+      <t>The existing EKT format <xref
+      target="I-D.ietf-avtcore-srtp-ekt"></xref> is insufficient for the needs
+      of Privacy-Ensured Cloud Conferencing, which needs to additionally
+      convey Ticket to conference participants. Thus, we extend the EKT format
+      by adding two fields, Ticket Length and Ticket.</t>
+
+      <t>The new EKT format is :</t>
+
+      <figure>
+        <artwork><![CDATA[ Full_EKT_Field = Ticket Length || Ticket || EKT_Ciphertext || SPI || '1']]></artwork>
+      </figure>
+
+      <t><list style="hanging">
+          <t hangText="Ticket Length:">Length of the Ticket. The length of
+          this field is fixed at 16 bits.</t>
+
+          <t hangText="Ticket: ">A variable length Kerberos-like object used
+          to identify and deliver keying material over an untrusted network to
+          authorized conference participants.</t>
+        </list></t>
+
+      <t>The rest of the fields in Full_EKT_Field are defined in <xref
+      target="I-D.ietf-avtcore-srtp-ekt"></xref>.</t>
+
+      <t>TBD: Mechanism to negotiate cipher site and HMAC algorithm to encrypt
+      and authenticate RTP packets. Possible options are to either use the
+      call signaling protocol or enhance EKT.</t>
+    </section>
+
+    <section title="KMS Protocol">
+      <section title="REST">
+        <t>The conference participants and KMS MUST use REST API over HTTPS
+        over TCP for generation, distribution of ticket and associated keying
+        material. HTTPS MUST be used for data confidentiality and integrity.
+        For client authentication, the client and server MUST use one or both
+        of (a) TLS client certificate or (b) HTTP authentication. TBD: For
+        interoperability we should choose one client authentication
+        mechanism.</t>
+
+        <t>To request a new ticket the conference participant makes an HTTP
+        POST request to the KMS. The response is returned with content-type
+        "application/json", and consists of a JavaScript Object Notation
+        (JSON) <xref target="RFC7159"></xref> object containing the ticket and
+        keying material. JSON <xref target="RFC7159"></xref> payload is also
+        used to convey the identities of conference participants authorized to
+        receive the keying material associated with the ticket.</t>
+
+        <section title="Create a ticket">
+          <t>An HTTP POST request will be used to create a ticket on the
+          KMS.</t>
+
+          <t><figure anchor="Figure1" title="POST to create a ticket">
+              <artwork align="left"><![CDATA[  POST {scheme}://{host}:{port}/.well-known/{version}/{URI suffix}
+  Accept: application/json
+  Content-type: application/json
+  {
+     "recipient" : string
+   }
+]]></artwork>
+            </figure></t>
+
+          <t>The header fields are described below.</t>
+
+          <t><list style="hanging">
+              <t hangText="recipient: ">Identities of conference participants
+              authorized to receive the ticket and its format is explained in
+              section 3.4.1 of <xref target="RFC5322"></xref>. (TBD: support
+              for phone numbers)</t>
+            </list></t>
+
+          <t>The following example shows POST request to create a ticket and
+          authorizing conference participants chirs@ietf.org and bob@ietf.org
+          to receive the keying material associated with the ticket.</t>
+
+          <t><figure anchor="Figure2" title="Example to request a ticket">
+              <artwork align="left"><![CDATA[  POST https://www.example.com/.well-known/v1/ticket
+  Accept: application/json
+  Content-type: application/json
+   {
+     "recipient": "chris@ietf.org, bob@ietf.org",
+   }
+]]></artwork>
+            </figure></t>
+
+          <t>TBD: Is there need to limit the length of recipient parameter
+          value ?</t>
+
+          <t>The KMS checks if the conference participant is authorized to
+          request ticket creation and issues a ticket. An successful response
+          is illustrated below:</t>
+
+          <t><figure anchor="Figure3"
+              title="Ticket and keying material in response">
+              <artwork align="left"><![CDATA[   HTTP/1.1 200 OK
+   Content-Type: application/json
+   Cache-Control: no-store
+  {
+    "ticket": "string",
+    "k": "string",
+    "kid" :"string",
+    "exp" : number, 
+    "enc" : "string"
+   }]]></artwork>
+            </figure></t>
+
+          <t>The parameter "k" is defined in Section 6.4.1 of <xref
+          target="I-D.ietf-jose-json-web-algorithms"></xref> is equivalent to
+          the EKT key, "enc" is defined in Section 4.1.2 of <xref
+          target="I-D.ietf-jose-json-web-encryption"></xref>, "kid" is defined
+          in Section 4.1.4 of <xref
+          target="I-D.ietf-jose-json-web-signature"></xref> is equivalent to
+          the SPI, authenticated encryption algorithms are defined in section
+          5.1 of <xref target="I-D.ietf-jose-json-web-algorithms"></xref> and
+          "exp" is defined in Section 4.1.4 of <xref
+          target="I-D.ietf-oauth-json-web-token"></xref>.</t>
+
+          <t>TBD: Establishing EKT Master salt out of band needs to be
+          discussed.</t>
+
+          <t>An example of successful response is illustrated below:</t>
+
+          <t><figure anchor="Figure4"
+              title="Example of ticket and keying material conveyed in response">
+              <artwork align="left"><![CDATA[   HTTP/1.1 200 OK
+   Content-Type: application/json
+   Cache-Control: no-store
+  {
+    "ticket":
+    "U2FsdGVkX18qJK/kkWmRcnfHglrVTJSpS6yU32kmHmOrfGyI3m1gQj1jRPsr0uBb",
+    "k": "v51N62OM65kyMvfTI08O",
+    "kid" :"22BIjxU93h/IgwEb",
+    "enc" : "A128KW"
+   }]]></artwork>
+            </figure></t>
+        </section>
+
+        <section title="Delete a ticket">
+          <t>An HTTP DELETE request will be used to delete a ticket. KMS must
+          validate the DELETE request to only permit the conference
+          participant who requested ticket creation to delete the ticket.</t>
+
+          <t><figure anchor="Figure5" title="Request to Delete a ticket">
+              <artwork align="left"><![CDATA[  DELETE {scheme}://{host}:{port}/.well-known/{URI suffix}
+  Accept: application/json
+  Content-type: application/json
+   {
+     "ticket": string
+   }
+]]></artwork>
+            </figure></t>
+        </section>
+
+        <section title="Get the keying material associated with a ticket">
+          <t>An HTTP GET request will be used to retrieve the keying material
+          associated with a ticket.</t>
+
+          <figure anchor="Figure6"
+                  title="Request to retrieve the keying material associated with a ticket">
+            <artwork align="left"><![CDATA[  GET {scheme}://{host}:{port}/.well-known/{URI suffix} 
+  Accept: application/json
+  Content-type: application/json
+  {
+     "ticket": string
+  }]]></artwork>
+          </figure>
+
+          <t></t>
+
+          <t>An example of successful response is illustrated below:</t>
+
+          <t><figure anchor="Figure7"
+              title="Example of keying material conveyed in response">
+              <artwork align="left"><![CDATA[   HTTP/1.1 200 OK
+   Content-Type: application/json
+   Cache-Control: no-store
+  {
+    "ticket":
+    "U2FsdGVkX18qJK/kkWmRcnfHglrVTJSpS6yU32kmHmOrfGyI3m1gQj1jRPsr0uBb",
+    "k": "v51N62OM65kyMvfTI08O",
+    "kid" :"22BIjxU93h/IgwEb",
+    "enc" : "A128KW",
+    "issuer" : "alice@ietf.org"
+   }]]></artwork>
+            </figure>The new header field is described below.</t>
+
+          <t><list style="hanging">
+              <t hangText="issuer: ">Identity of the conference participant
+              who requested ticket creation.</t>
+            </list></t>
+        </section>
+      </section>
+    </section>
+
+    <section title="Authenticating the KMS">
+      <t>The conference participant must know the KMS to use with the cloud
+      conferencing server. To authenticate the KMS, the conference participant
+      needs to be configured with the names or IP addresses of those KMS. The
+      server certificate MUST contain DNS-ID (subjectAltName) as described in
+      Section 4.1 of <xref target="RFC6125"></xref>. DNS names and IP
+      addresses can be contained in the subjectAltName entries. The client
+      MUST use the rules and guidelines given in section 6 of <xref
+      target="RFC6125"></xref> to validate the KMS identity.</t>
+
+      <t>For KMS that don't have a certificate trust chain (e.g., because they
+      are on a home network or a corporate network), the configured list of
+      KMS can contain the Subject Public Key Info (SPKI) fingerprint of the
+      KMS (i.e., a simple whitelist of name and SPKI fingerprint). The public
+      key is used for the same reasons HTTP pinning <xref
+      target="RFC7469"></xref> uses the public key.</t>
+    </section>
+
+    <section title="Communication between the conference particpant and KMS">
+      <t>TBD: Should the conference participant directly communicate with the
+      KMS or through the conference server acting as proxy ?
+      (https://tools.ietf.org/html/draft-thomson-http-encryption-00 also
+      discusses using KMS to encrypt the contents of a HTTP message).</t>
+    </section>
+
+    <section title="IANA Considerations">
+      <t>TODO</t>
+    </section>
+
+    <section anchor="security" title="Security Considerations">
+      <t>The interaction between the conference participants and the KMS
+      requires Transport Layer Security (TLS) with a ciphersuite offering
+      confidentiality protection and the guidance given in <xref
+      target="RFC7525"></xref> must be followed to avoid attacks on TLS. The
+      EKT Key MUST NOT be transmitted in clear since this would completely
+      destroy the security benefits of the proposed scheme.</t>
+
+      <t>TBD: The generation of new ticket has to be rate-limited to handle
+      participants frequently joining and leaving the conference call.</t>
+    </section>
+
+    <section anchor="ack" title="Acknowledgements">
+      <t>TODO</t>
+    </section>
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include="reference.RFC.2119"?>
+
+      <?rfc include='reference.I-D.ietf-avtcore-srtp-ekt'?>
+
+      <?rfc include="reference.RFC.4120"?>
+
+      <?rfc include='reference.RFC.6407'?>
+
+      <?rfc include="reference.RFC.6043"?>
+
+      <?rfc include="reference.RFC.7159"?>
+
+      <?rfc include="reference.RFC.6125"?>
+
+      <?rfc include="reference.RFC.7469"?>
+
+      <?rfc include="reference.RFC.3550"?>
+
+      <?rfc include="reference.RFC.5322"?>
+
+      <?rfc include='reference.I-D.ietf-jose-json-web-signature'?>
+
+      <?rfc include='reference.I-D.ietf-jose-json-web-encryption'?>
+
+      <?rfc include='reference.I-D.ietf-jose-json-web-algorithms'?>
+
+      <?rfc include='reference.I-D.ietf-oauth-json-web-token'?>
+    </references>
+
+    <references title="Informative References">
+      <?rfc include="reference.I-D.abiggs-saag-key-management-service" ?>
+
+      <?rfc include="reference.I-D.jones-avtcore-private-media-reqts" ?>
+
+      <?rfc include="reference.I-D.jones-avtcore-private-media-framework"?>
+
+      <?rfc include="reference.RFC.7525"?>
+    </references>
+  </back>
+</rfc>
