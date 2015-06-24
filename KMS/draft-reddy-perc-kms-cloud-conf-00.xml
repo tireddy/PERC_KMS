@@ -129,7 +129,7 @@
         over an untrusted network.</t>
 
         <t>Media content and Switching conference server are explained in
-        <xref target="I-D.jones-avtcore-private-media-reqts"></xref>. </t>
+        <xref target="I-D.jones-avtcore-private-media-reqts"></xref>.</t>
       </section>
     </section>
 
@@ -489,9 +489,9 @@
     <section title="Authenticating the KMS">
       <t>The conference participant must know the KMS to use with the
       Switching conference server. To authenticate the KMS, the conference
-      participant needs to be configured with the names or IP addresses of
-      those KMS. The server certificate MUST contain DNS-ID (subjectAltName)
-      as described in Section 4.1 of <xref target="RFC6125"></xref>. DNS names
+      participant needs to be configured with the names or IP addresses of the
+      KMS. The server certificate MUST contain DNS-ID (subjectAltName) as
+      described in Section 4.1 of <xref target="RFC6125"></xref>. DNS names
       and IP addresses can be contained in the subjectAltName entries. The
       client MUST use the rules and guidelines given in section 6 of <xref
       target="RFC6125"></xref> to validate the KMS identity.</t>
